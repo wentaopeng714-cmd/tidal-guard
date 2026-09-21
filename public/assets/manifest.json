@@ -1,0 +1,32 @@
+{
+  "retrieved": "2026-09-22",
+  "assets": [
+    {
+      "file": "environment/tree_palmDetailedShort.glb",
+      "author": "Kenney",
+      "license": "CC0-1.0",
+      "source": "https://github.com/ETdoFresh/kenney.nl/blob/master/kenney_natureKit_2.1/Models/GLTF format/tree_palmDetailedShort.glb",
+      "upstreamBlob": "6bcd1005a39bcde39b5758c1aa10c583023a211a",
+      "sha256": "bc1013aaacca3bdd116ad1cded4f9499f008fe3056e760f3238be05aa21ff9f2",
+      "used": false
+    },
+    {
+      "file": "environment/tree_palmBend.glb",
+      "author": "Kenney",
+      "license": "CC0-1.0",
+      "source": "https://github.com/ETdoFresh/kenney.nl/blob/master/kenney_natureKit_2.1/Models/GLTF format/tree_palmBend.glb",
+      "upstreamBlob": "c8c16dc1c2e3ba02b7cd3d4e93318eec3105253d",
+      "sha256": "8af9dae16ce3c03183f9457996ebdd135167199514e8f4f944ee2bd82828d5c9",
+      "used": true
+    },
+    {
+      "file": "environment/KENNEY-LICENSE.txt",
+      "author": "Kenney",
+      "license": "CC0-1.0",
+      "source": "https://github.com/ETdoFresh/kenney.nl/blob/master/kenney_natureKit_2.1/License.txt",
+      "upstreamBlob": "f4c0bb6a1f398882e6a0b4417f69e5fc84ba53bc",
+      "sha256": "cb96b75e3560ac78d7a53ce6f083f4cdb5c53faea6141b62d63458dcfe1e4b9d",
+      "used": true
+    }
+  ]
+}
