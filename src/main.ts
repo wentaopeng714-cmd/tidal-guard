@@ -1,5 +1,6 @@
 import './style.css';
-import {Game,LEVELS,type Upgrade} from './simulation';
+import {Game,LEVELS,startingKit,type Upgrade} from './simulation';
+import {stageTheme} from './themes';
 import {World} from './world';
 import {Sound} from './audio';
 
@@ -7,13 +8,13 @@ const svg=(content:string)=>`<svg viewBox="0 0 24 24" fill="none" stroke="curren
 const icons={heart:svg('<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z" fill="currentColor"/>'),coin:svg('<circle cx="12" cy="12" r="9"/><path d="M14.5 8.5h-4a2 2 0 0 0 0 4h3a2 2 0 0 1 0 4H9.5M12 6v12"/>'),power:svg('<path d="m12 2 2.2 6.1 6.5-2-3 6 4.3 4.9-6.5.2L12 23l-3.5-5.8-6.5-.2 4.3-4.9-3-6 6.5 2Z" fill="currentColor"/>'),haste:svg('<path d="m13.5 2-9 12h6L10 22l9.5-13H13l.5-7Z" fill="currentColor"/>'),chain:svg('<path d="m4 17 5-5 5 3 6-10M15 5h5v5"/><circle cx="4" cy="17" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="14" cy="15" r="2"/>'),shield:svg('<path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8 12 3 3 5-6"/>'),pause:svg('<path d="M8 5v14M16 5v14" stroke-width="4"/>'),play:svg('<path d="m8 4 12 8-12 8Z" fill="currentColor"/>'),sound:svg('<path d="m11 4-6 5H2v6h3l6 5V4ZM16 8a6 6 0 0 1 0 8M19 4a11 11 0 0 1 0 16"/>'),mute:svg('<path d="m11 4-6 5H2v6h3l6 5V4ZM16 9l6 6M22 9l-6 6"/>'),help:svg('<circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 0 1 6 0c0 2-3 2-3 4M12 17h.01"/>'),burst:svg('<circle cx="12" cy="12" r="4"/><path d="M12 1v3m0 16v3M1 12h3m16 0h3M4 4l2 2m12 12 2 2M4 20l2-2M18 6l2-2"/>'),arrow:svg('<path d="M5 12h14m-6-6 6 6-6 6"/>')};
 document.querySelector('#app')!.innerHTML=`
 <main class="game-shell">
- <header class="masthead"><a class="brand" href="#" aria-label="潮汐守卫"><span class="brand-mark">${icons.burst}</span><span>潮汐守卫<small>TIDAL GUARD</small></span></a><span class="edition">A LITTLE ISLAND. A BIG DEFENCE.</span><div class="tools"><button id="sound" class="tool" aria-label="开启音效" title="音效">${icons.mute}</button><button id="help" class="tool" aria-label="玩法帮助">${icons.help}</button></div></header>
- <section class="hud" aria-label="战斗状态"><div class="health stat">${icons.heart}<span id="hearts">3</span><span id="shield-count"></span></div><button id="levels" class="wave-stat" aria-label="查看15关路线"><div class="wave-title"><span id="level-name">初见车队</span><strong>关卡 <b id="wave">01</b><i> / 15</i></strong></div><div class="progress"><span id="progress"></span></div></button><div class="money stat">${icons.coin}<span id="coins">24</span></div><button id="pause" class="tool pause" aria-label="暂停游戏">${icons.pause}</button></section>
+ <header class="masthead"><a class="brand" href="#" aria-label="潮汐守卫"><span class="brand-mark">${icons.burst}</span><span>潮汐守卫<small>TIDAL GUARD</small></span></a><span class="edition">A LITTLE ISLAND. A BIG DEFENCE.</span><div class="tools"><button id="open-levels" class="tool select-tool">选关</button><button id="sound" class="tool" aria-label="开启音效" title="音效">${icons.mute}</button><button id="help" class="tool" aria-label="玩法帮助">${icons.help}</button></div></header>
+ <section class="hud" aria-label="战斗状态"><div class="health stat">${icons.heart}<span id="hearts">3</span><span id="shield-count"></span></div><button id="levels" class="wave-stat" aria-label="选择关卡"><div class="wave-title"><span id="level-name">初见车队</span><strong>关卡 <b id="wave">01</b><i> / 15</i></strong></div><div class="progress"><span id="progress"></span></div></button><div class="money stat">${icons.coin}<span id="coins">24</span></div><button id="pause" class="tool pause" aria-label="暂停游戏">${icons.pause}</button></section>
  <div id="world"></div><div class="paper-grain" aria-hidden="true"></div>
- <div class="island-caption"><span>01 — SUNSHELL BAY</span><i>晴 · 微风 · 适合守岛</i></div>
+ <div class="island-caption"><span id="scene-title">01 — 阳光海岸</span><i id="scene-weather">暖风 · 贝壳与椰林</i></div>
  <div id="toast" role="status"></div>
  <div class="tower-label"><span class="live-dot"></span><span id="tower-level">海盐炮塔 · LV 1</span><span class="tag">AUTO</span></div>
- <div id="welcome" class="welcome"><span class="eyebrow">WELCOME TO SUNSHELL BAY</span><h1>把夏天，守住。</h1><p>击破方块，收集金币。<br>击败高血量车头，建造你的炮台阵列。</p><button id="start" class="start-button">开始守岛 ${icons.arrow}</button><small>160 血车头 · 15 关挑战 · 最多 5 座炮台</small></div>
+ <div id="welcome" class="welcome"><span class="eyebrow">WELCOME TO SUNSHELL BAY</span><h1>把夏天，守住。</h1><p>击破方块，收集金币。<br>击败高血量车头，建造你的炮台阵列。</p><button id="start" class="start-button">开始守岛 ${icons.arrow}</button><button id="welcome-levels" class="text-button">选择关卡 · 5 大场景 / 15 关</button><small>顺序闯关保留装备 · 自由选关配发装备</small></div>
  <div id="level-clear" class="level-clear" hidden><span class="eyebrow">COAST CLEAR</span><h2 id="clear-title"></h2><p id="clear-info"></p><button id="next-level" class="start-button">进入下一关</button><small>可先在下方升级 / 增建炮台，再出发。</small></div>
  <footer class="dock"><div class="dock-top"><button id="build-tower" class="build-button" aria-label="增建炮台"><b>＋ 增建炮台</b><span id="build-price">24 金币</span><span id="tower-count">1 / 5</span></button><button id="speed" title="切换游戏速度">1× 速度</button></div><div class="upgrades">
  ${(['power','haste','chain','shield'] as Upgrade[]).map((type,i)=>`<button class="upgrade ${type}" id="${type}" data-upgrade="${type}" aria-label="${['升级火力','升级射速','升级连锁','修复或购买护盾'][i]}"><span class="upgrade-top"><span class="icon">${icons[type]}</span><kbd>${i+1}</kbd></span><span class="upgrade-name">${['火力强化','极速装填','连锁弹射','海岸护盾'][i]}</span><span class="upgrade-desc" id="desc-${type}">${['全体伤害 +3','全体射速 +18%','全体弹射 +1','修复 / 抵挡 1 次'][i]}</span><span class="upgrade-foot"><span id="level-${type}">LV 0</span><strong>${icons.coin}<b id="cost-${type}">6</b></strong></span></button>`).join('')}
@@ -26,6 +27,8 @@ const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(
 let game=new Game();const sound=new Sound();let world:World;
 try{world=new World($('world'));}catch(error){$('webgl-error').hidden=false;throw error;}
 let highScore=0;try{highScore=Number(localStorage.getItem('tidal-guard-best')||0);sound.enabled=localStorage.getItem('tidal-guard-sound')==='true';}catch{}
+let completed=new Set<number>();try{const saved=JSON.parse(localStorage.getItem('tidal-guard-cleared')||'[]');if(Array.isArray(saved))completed=new Set(saved.filter(n=>Number.isInteger(n)&&n>=1&&n<=15));}catch{}
+let selectedLevel=1;
 let toastTimer=0,modalKind='',lastMode=game.mode,lastWave=0,manual=false,lastUI='';
 function toast(message:string){$('toast').textContent=message;$('toast').classList.add('visible');toastTimer=2.7;}
 function updateSound(){ $('sound').innerHTML=sound.enabled?icons.sound:icons.mute;$('sound').setAttribute('aria-label',sound.enabled?'关闭音效':'开启音效');$('sound').setAttribute('aria-pressed',String(sound.enabled)); }
@@ -37,6 +40,11 @@ function syncUI(){
  $('wave').textContent=String(game.wave).padStart(2,'0');$('progress').style.width=`${game.defeated/game.waveCount*100}%`;
  $('tower-level').textContent=`炮台 ${game.towerCount} / 5 · 每发 ${game.damage} · ${(1/game.interval).toFixed(1)} 发/秒`;
  $('level-name').textContent=game.config.name;
+ const theme=stageTheme(game.wave);
+ $('scene-title').textContent=`${String(game.wave).padStart(2,'0')} — ${theme.label}`;
+ $('scene-weather').textContent=theme.weather;
+ document.querySelector<HTMLElement>('.game-shell')!.style.background=theme.ground;
+ document.body.style.background=theme.ground;
  $<HTMLButtonElement>('build-tower').disabled=!game.canBuild();$('build-price').textContent=game.towerCount===game.maxTowers?'已建满':`${game.buildCost} 金币`;
  $('tower-count').textContent=`${game.towerCount} / ${game.maxTowers}`;
  $('level-clear').hidden=game.mode!=='intermission';
@@ -54,33 +62,44 @@ function syncUI(){
  $('hint').textContent=game.mode==='ready'?'点击开始，海岸就交给你了。':game.mode==='intermission'?'本关已清空 · 所有升级对全部炮台生效':`已击破 ${game.kills} · ${game.targetId?'正在锁定目标':'自动追踪中'} · 点击方块集火`;
 }
 function showModal(kind:string){
- modalKind=kind;$('modal').hidden=false;$('modal-secondary').hidden=kind!=='pause';
- const titles:Record<string,string>={pause:'海风歇一会儿。',help:'组建你的海岸炮台阵列。',levels:'十五关，一条海岸线。',won:'海岸，守住了。',lost:'再守一次夏天。'};
+ modalKind=kind;$('modal').hidden=false;$('modal-secondary').hidden=kind!=='pause'&&kind!=='levels';$('modal-secondary').textContent=kind==='levels'?'返回当前游戏':'重新开始';
+ const titles:Record<string,string>={pause:'海风歇一会儿。',help:'组建你的海岸炮台阵列。',levels:'挑一站，开始守岛。',won:'海岸，守住了。',lost:'再守一次夏天。'};
  $('modal-title').textContent=titles[kind];$('modal-eyebrow').textContent=({pause:'TAKE A LITTLE BREAK',help:'HOW TO PLAY',levels:'CAMPAIGN · 15 LEVELS',won:'ISLAND PROTECTED',lost:'THE TIDE WILL TURN'} as Record<string,string>)[kind];
- $('modal-body').innerHTML=kind==='levels'?`<div class=level-grid>${LEVELS.map(l=>`<div class="level-node ${l.number<game.wave?'complete':l.number===game.wave?'current':''}"><b>${String(l.number).padStart(2,'0')}</b><span>${l.name}</span><small>车头 ${l.headHp}</small></div>`).join('')}</div><p>关卡逐一解锁。金币、升级和已建炮台带入下一关。</p>`:kind==='help'?`<ul class="instructions"><li><b>守住中心</b><span>高血量车头拖着方块车厢靠近，漏过敌人会扣生命。</span></li><li><b>强化炮塔</b><span>用金币增建炮台（B 键），最多 5 座。伤害、射速和弹射升级对全部炮台生效，数字键 1–4 购买升级。</span></li><li><b>主动出击</b><span>点击方块锁定目标。空格释放全场爆发，22 秒后恢复。</span></li><li><b>逐关推进</b><span>共 15 关，车头血量、数量、车厢数量和速度逐渐提高。关间可以整备，点击“进入下一关”再出发。P / Esc 暂停。</span></li></ul>`:kind==='pause'?'<p>你的炮塔和海岸都在等你。</p>':`<p>${kind==='won'?'每一颗金币，都没白花。':'把金币花在火力上，试试及时释放潮汐爆发。'}</p><div class="results"><span><b>${game.wave}<small> / 15</small></b>抵达波次</span><span><b>${game.kills}</b>击破方块</span><span><b>${game.earned}</b>获得金币</span></div>`;
+ $('modal-body').innerHTML=kind==='levels'?levelPickerHTML():kind==='help'?`<ul class="instructions"><li><b>守住中心</b><span>高血量车头拖着方块车厢靠近，漏过敌人会扣生命。</span></li><li><b>强化炮塔</b><span>用金币增建炮台（B 键），最多 5 座。伤害、射速和弹射升级对全部炮台生效，数字键 1–4 购买升级。</span></li><li><b>主动出击</b><span>点击方块锁定目标。空格释放全场爆发，22 秒后恢复。</span></li><li><b>逐关推进</b><span>共 15 关、5 大场景，可用“选关”直接挑战，配发对应装备；顺序闯关保留装备。车队难度逐渐提高。关间可以整备，点击“进入下一关”再出发。P / Esc 暂停。</span></li></ul>`:kind==='pause'?'<p>你的炮塔和海岸都在等你。</p>':`<p>${kind==='won'?'每一颗金币，都没白花。':'把金币花在火力上，试试及时释放潮汐爆发。'}</p><div class="results"><span><b>${game.wave}<small> / 15</small></b>抵达波次</span><span><b>${game.kills}</b>击破方块</span><span><b>${game.earned}</b>获得金币</span></div>`;
  $('modal-action').innerHTML=(kind==='pause'?'继续守岛':(kind==='help'||kind==='levels')?'知道了':kind==='won'?'再来一局':'再试一次')+icons.arrow;
- requestAnimationFrame(()=>$('modal-action').focus());
+ if(kind==='levels')updateSelection();
+ requestAnimationFrame(()=>{if(kind==='levels'){document.querySelector<HTMLButtonElement>(`[data-level="${selectedLevel}"]`)?.focus({preventScroll:true});document.querySelector('.modal-card')!.scrollTop=0;}else $('modal-action').focus();});
 }
 function closeModal(){ $('modal').hidden=true;modalKind=''; }
-function restart(){closeModal();world.reset();game=new Game();game.start();lastMode='playing';toast('第 1 关 · 160 血车头来袭');syncUI();}
+function restart(level=1){closeModal();world.reset();game=new Game(level);game.start();lastMode='playing';lastUI='';toast(`第 ${level} 关 · ${stageTheme(level).label}`);syncUI();}
+function levelPickerHTML(){return `<div class="level-grid">${LEVELS.map(l=>{const t=stageTheme(l.number);return `<button class="level-node" data-level="${l.number}" aria-label="第 ${l.number} 关 ${t.label}" aria-pressed="false" style="--tile:${t.ground}"><b>${String(l.number).padStart(2,'0')} <i>${t.icon}</i></b><span>${t.label}</span><small>${completed.has(l.number)?'✓ 已通关':'车头 '+l.headHp}</small></button>`;}).join('')}</div><div id="selected-detail" class="selected-detail"></div><p class="selection-note">15 关均可直接挑战；选关会重新开始并配发本关装备。顺序进入下一关则保留当前金币与升级。</p>`;}
+function updateSelection(){
+ document.querySelectorAll<HTMLButtonElement>('[data-level]').forEach(b=>{const n=Number(b.dataset.level);b.setAttribute('aria-pressed',String(n===selectedLevel));b.classList.toggle('current',n===selectedLevel);});
+ const l=LEVELS[selectedLevel-1],k=startingKit(selectedLevel),t=stageTheme(selectedLevel);
+ $('selected-detail').innerHTML=`<strong>${t.icon} ${t.label} / ${l.name}</strong><span>${l.heads} 个车头 · 血量 ${l.headHp.toLocaleString()} · ${l.count} 节车队</span><span>配发 ${k.towers} 座炮台 · 火力 ${k.power} / 射速 ${k.haste} / 连锁 ${k.chain} · ${k.coins} 金币</span>`;
+ $('modal-action').textContent=`开始第 ${selectedLevel} 关 →`;
+}
+function openLevels(){selectedLevel=game.wave;helpResume=game.mode==='playing';if(helpResume)game.togglePause();showModal('levels');syncUI();}
+function dismissInfo(){if(helpResume&&game.mode==='paused')game.togglePause();closeModal();syncUI();}
+$('modal-body').onclick=e=>{const button=(e.target as HTMLElement).closest<HTMLButtonElement>('[data-level]');if(button){selectedLevel=Number(button.dataset.level);updateSelection();}};
 function pause(){if(!['playing','paused'].includes(game.mode))return;game.togglePause();if(game.mode==='paused')showModal('pause');else closeModal();syncUI();}
 $('next-level').onclick=()=>{if(game.nextLevel())syncUI();};
 $('build-tower').onclick=()=>{sound.unlock();if(game.buildTower()){toast(`第 ${game.towerCount} 座炮台已建好 · 自动加入战斗`);syncUI();}};
-$('levels').onclick=()=>{helpResume=game.mode==='playing';if(helpResume)game.togglePause();showModal('levels');};
+$('levels').onclick=openLevels;$('open-levels').onclick=openLevels;$('welcome-levels').onclick=openLevels;
 $('start').onclick=()=>{sound.unlock();game.start();syncUI();};
 $('sound').onclick=()=>{sound.unlock();sound.enabled=!sound.enabled;try{localStorage.setItem('tidal-guard-sound',String(sound.enabled));}catch{}updateSound();sound.play('buy');};
 $('pause').onclick=pause;
 let helpResume=false;
 $('help').onclick=()=>{helpResume=game.mode==='playing';if(helpResume)game.togglePause();showModal('help');};
-$('modal-action').onclick=()=>{sound.unlock();if(modalKind==='pause'){game.togglePause();closeModal();}else if(modalKind==='help'||modalKind==='levels'){if(helpResume&&game.mode==='paused')game.togglePause();closeModal();}else restart();syncUI();};
-$('modal-secondary').onclick=restart;
+$('modal-action').onclick=()=>{sound.unlock();if(modalKind==='pause'){game.togglePause();closeModal();}else if(modalKind==='levels'){restart(selectedLevel);}else if(modalKind==='help'){dismissInfo();}else restart(game.mode==='lost'?game.wave:1);syncUI();};
+$('modal-secondary').onclick=()=>{if(modalKind==='levels')dismissInfo();else restart();};
 for(const type of ['power','haste','chain','shield'] as Upgrade[])$(type).onclick=()=>{sound.unlock();if(game.buy(type)){toast(({power:'全部炮台强化 · 每发 '+game.damage+' 点伤害',haste:'极速装填 · 火力更密集了',chain:'连锁弹射 · 一发命中多个方块',shield:'海岸防线已加固'})[type]);syncUI();}};
 $('burst').onclick=()=>{sound.unlock();if(game.burst())toast('潮汐爆发！');};
 $('speed').onclick=()=>{game.speed=game.speed===1?2:1;syncUI();};
 world.renderer.domElement.addEventListener('pointerdown',e=>{sound.unlock();const id=world.pick(e.clientX,e.clientY);if(id!==null){game.select(id);syncUI();}});
 window.addEventListener('keydown',e=>{
  if(e.repeat)return;
- if(e.key==='Escape'||e.code==='KeyP'){if(modalKind==='help'||modalKind==='levels')$('modal-action').click();else pause();return;}
+ if(e.key==='Escape'||e.code==='KeyP'){if(modalKind==='help'||modalKind==='levels')dismissInfo();else pause();return;}
  if(!$('modal').hidden)return;
  if(e.code==='KeyB')$('build-tower').click();
  if(e.code==='Space'){e.preventDefault();if(game.mode==='ready')$('start').click();else $('burst').click();}
@@ -91,7 +110,7 @@ world.renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefau
 world.renderer.domElement.addEventListener('webglcontextrestored',()=>location.reload());
 function step(dt:number){
  const simDt=dt*game.speed;const steps=Math.ceil(simDt/(1/60));for(let i=0;i<steps;i++)game.tick(simDt/steps);
- for(const e of game.events){world.event(e);sound.play(e.type);if(e.type==='wave')toast(`第 ${e.amount} 关 · ${game.config.name} · 车头 ${game.config.headHp} 血`);if(e.type==='clear')toast(`过关！奖励 +${e.amount} 金币`);}game.events=[];
+ for(const e of game.events){world.event(e);sound.play(e.type);if(e.type==='wave')toast(`第 ${e.amount} 关 · ${game.config.name} · 车头 ${game.config.headHp} 血`);if(e.type==='clear')toast(`过关！奖励 +${e.amount} 金币`);if(e.type==='clear'||e.type==='win'){completed.add(game.wave);try{localStorage.setItem('tidal-guard-cleared',JSON.stringify([...completed]));}catch{}}}game.events=[];
  if(game.mode!==lastMode){if(game.mode==='won'||game.mode==='lost'){highScore=Math.max(highScore,game.kills);try{localStorage.setItem('tidal-guard-best',String(highScore));}catch{}showModal(game.mode);}lastMode=game.mode;}
  if(game.wave!==lastWave)lastWave=game.wave;
  if(toastTimer>0){toastTimer-=dt;if(toastTimer<=0)$('toast').classList.remove('visible');}

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {stageTheme} from './themes';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { ENEMY_GAP, TOWER_SITES, type Enemy, type Event, type Game } from './simulation';
@@ -17,16 +18,20 @@ export class World {
   bulletGeometry=new THREE.SphereGeometry(.105,8,6);particleGeometry=new THREE.BoxGeometry(.1,.1,.1);
   coinGeometry=new THREE.CylinderGeometry(.15,.15,.045,10);raycaster=new THREE.Raycaster();pointer=new THREE.Vector2();
   towers:THREE.Group[]=[];turrets:THREE.Group[]=[];recoils:number[]=[];pads:THREE.Group[]=[];
+  stage=0; beachObjects:THREE.Object3D[]=[]; palms=new THREE.Group(); scenery=new THREE.Group();
+  groundMaterial=new THREE.MeshBasicMaterial({color:0xf8ebc2,toneMapped:false});
+  roadMaterial=new THREE.MeshStandardMaterial({color:0xb89ba7,roughness:.86,side:THREE.DoubleSide});
+  sun=new THREE.DirectionalLight(0xffefd6,2.5);
   selectedRing:THREE.Mesh; assetsReady=false; assetError=false; recoil=0; time=0; shake=0;
   constructor(public host:HTMLElement) {
     this.renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});
     this.renderer.setPixelRatio(Math.min(devicePixelRatio,2));this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace=THREE.SRGBColorSpace;this.renderer.toneMapping=THREE.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1.05;
-    host.append(this.renderer.domElement);this.renderer.domElement.setAttribute('aria-label','3D 沙滩螺旋塔防战场，点击方块可锁定目标');
+    host.append(this.renderer.domElement);this.renderer.domElement.setAttribute('aria-label','3D 螺旋塔防战场，点击方块可锁定目标');
     this.scene.add(new THREE.HemisphereLight(0xfff7dc,0xb7a4ba,1.9));
-    const sun=new THREE.DirectionalLight(0xffefd6,2.5);sun.position.set(-7,15,-7);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
+    const sun=this.sun;sun.position.set(-7,15,-7);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
     Object.assign(sun.shadow.camera,{left:-14,right:14,top:14,bottom:-14,near:.5,far:40});sun.shadow.bias=-.0005;sun.shadow.normalBias=.04;sun.shadow.radius=4;this.scene.add(sun);
-    this.environment();this.road();this.buildTower();this.buildPads();
+    this.environment();this.road();this.buildTower();this.buildPads();this.scene.add(this.palms,this.scenery);
     this.selectedRing=new THREE.Mesh(new THREE.RingGeometry(.58,.65,40),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.9,side:THREE.DoubleSide}));
     this.selectedRing.rotation.x=-Math.PI/2;this.selectedRing.visible=false;this.scene.add(this.selectedRing);
     this.resize();new ResizeObserver(()=>this.resize()).observe(host);
@@ -43,7 +48,7 @@ export class World {
     this.camera.near=.1;this.camera.far=90;this.camera.position.set(0,24,15.6);this.camera.lookAt(0,0,.15);this.camera.updateProjectionMatrix();
   }
   environment() {
-    const ground=new THREE.Mesh(new THREE.PlaneGeometry(150,150),new THREE.MeshBasicMaterial({color:0xf8ebc2,toneMapped:false}));ground.rotation.x=-Math.PI/2;ground.position.y=.005;this.scene.add(ground);
+    const ground=new THREE.Mesh(new THREE.PlaneGeometry(150,150),this.groundMaterial);ground.rotation.x=-Math.PI/2;ground.position.y=.005;this.scene.add(ground);
     const shadow=new THREE.Mesh(new THREE.PlaneGeometry(150,150),new THREE.ShadowMaterial({color:0x76606b,opacity:.23}));shadow.rotation.x=-Math.PI/2;shadow.position.y=.015;shadow.receiveShadow=true;this.scene.add(shadow);
     const environmentStart=this.scene.children.length;
     // Tiny, sparse freckles give the otherwise clean material a paper-and-sand finish.
@@ -62,7 +67,8 @@ export class World {
     const label=this.sprite('IN',INK,120);label.scale.set(.7,.35,1);label.position.set(-7.6,1.24,-6.39);this.scene.add(label);
     const flagPole=this.cylinder(.028,.028,1.7,INK);flagPole.position.set(1.1,.85,2.6);
     const flag=this.mesh(new THREE.PlaneGeometry(.62,.35),0xec8b79);flag.material=new THREE.MeshStandardMaterial({color:0xec8b79,side:THREE.DoubleSide});flag.position.set(1.39,1.49,2.6);
-    for(const object of this.scene.children.slice(environmentStart))object.position.z*=1.43;
+    this.beachObjects=this.scene.children.slice(environmentStart);
+    for(const object of this.beachObjects)object.position.z*=1.43;
   }
   star(x:number,z:number,color:number,r:number) {
     const s=new THREE.Shape();for(let i=0;i<10;i++){const a=i*Math.PI/5,rr=i%2?r*.43:r;i?s.lineTo(Math.sin(a)*rr,Math.cos(a)*rr):s.moveTo(0,r);}s.closePath();
@@ -75,7 +81,7 @@ export class World {
       const bounds=new THREE.Box3().setFromObject(gltf.scene);const size=bounds.getSize(new THREE.Vector3());
       [[-7.5,-5.8,2.7,.4],[-7.6,4.1,2.5,1.7],[7.7,-5.4,2.4,3.7],[7.8,6.4,2.8,4.3]].forEach(([x,z,h,a])=>{
         const palm=gltf.scene.clone(true);palm.scale.setScalar(h/size.y);palm.position.set(x,-bounds.min.y*h/size.y,z*1.43);palm.rotation.y=a;
-        palm.traverse(o=>{if(o instanceof THREE.Mesh){o.castShadow=true;o.receiveShadow=true;}});this.scene.add(palm);
+        palm.traverse(o=>{if(o instanceof THREE.Mesh){o.castShadow=true;o.receiveShadow=true;}});this.palms.add(palm);
       });this.assetsReady=true;
     } catch(error){this.assetError=true;console.error('Palm asset failed to load',error);}
   }
@@ -87,7 +93,7 @@ export class World {
       if(i<n){const j=i*2;indices.push(j,j+2,j+1,j+1,j+2,j+3);}
     }
     const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));g.setIndex(indices);g.computeVertexNormals();
-    const road=this.mesh(g,0xb89ba7);(road.material as THREE.Material).side=THREE.DoubleSide;road.castShadow=false;
+    const road=new THREE.Mesh(g,this.roadMaterial);road.receiveShadow=true;this.scene.add(road);
     const curbGeo=new RoundedBoxGeometry(.69,.22,.27,2,.055);const curb=new THREE.InstancedMesh(curbGeo,this.material(0xffffff),146);curb.castShadow=true;curb.receiveShadow=true;
     const dummy=new THREE.Object3D();
     for(let i=0;i<73;i++){
@@ -96,6 +102,59 @@ export class World {
     }this.scene.add(curb);
     const dashes=new THREE.InstancedMesh(new THREE.PlaneGeometry(.055,.31),new THREE.MeshBasicMaterial({color:0xeee1d3,transparent:true,opacity:.6}),62);
     for(let i=0;i<62;i++){const p=path.getPointAt(i/62),t=path.getTangentAt(i/62);dummy.position.set(p.x,.072,p.z);dummy.rotation.set(-Math.PI/2,0,Math.atan2(t.x,t.z));dummy.updateMatrix();dashes.setMatrixAt(i,dummy.matrix);}this.scene.add(dashes);
+  }
+  setStage(level:number) {
+    if(this.stage===level)return;
+    this.stage=level;const t=stageTheme(level),v=t.variant;
+    this.groundMaterial.color.set(t.ground);this.roadMaterial.color.setHex(t.road).offsetHSL(v*.012,0,-v*.025);
+    this.sun.color.setHex(t.sun);this.sun.position.set(-7+v*5,15,-7+v*2);
+    this.beachObjects.forEach(o=>o.visible=t.kind==='beach');this.palms.visible=t.kind==='beach';
+    this.palms.rotation.y=v*.025;
+    this.scenery.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});this.scenery.clear();
+    // Fixed margins keep scenery outside the convoy and turret sites.
+    const sites=[[-7.5,-7.5],[7.7,-6.7],[-7.8,1],[7.9,1.5],[-7.4,6.9],[7.6,8.2],[-3.9,9.8],[3.7,-9.4]];
+    sites.forEach(([x,z],i)=>{
+      const group=new THREE.Group();group.position.set(x+(v-1)*.12*(i%2?1:-1),0,z+(v-1)*.28);group.rotation.y=i*.8+v*.7;
+      const scale=.85+((i+v)%3)*.18;group.scale.setScalar(scale);this.scenery.add(group);
+      if(t.kind==='forest'||t.kind==='snow'){
+        this.cylinder(.13,.19,1,0x977559,group,7).position.y=.5;
+        for(let j=0;j<3;j++){
+          const tree=this.mesh(new THREE.ConeGeometry(.8-j*.16,1.1,7),t.kind==='snow'?[0x7ca6ac,0xb4cfd0,0xf3f7ee][j]:[0x66977b,0x7daa7e,0x9cbc80][j],group);tree.position.y=1+j*.46;
+        }
+        if(t.kind==='forest'){
+          this.cylinder(.07,.09,.4,0xffead0,group).position.set(.85,.2,.4);
+          const mushroom=this.mesh(new THREE.SphereGeometry(.32,10,6,0,Math.PI*2,0,Math.PI/2),i%2?0xe49c91:0xe6c779,group);mushroom.position.set(.85,.42,.4);
+        }else{
+          const ice=this.mesh(new THREE.ConeGeometry(.32,1.1,5),0x9ccee0,group);ice.position.set(.85,.55,.4);ice.rotation.z=.16;
+          const snow=this.mesh(new THREE.DodecahedronGeometry(.55,0),0xf1f7ef,group);snow.position.set(-.5,.2,.2);snow.scale.y=.45;
+        }
+      }else if(t.kind==='desert'){
+        if(i%2===0){
+          this.cylinder(.24,.26,1.8,0x6baf91,group,7).position.y=.9;
+          for(const side of [-1,1]){
+            const arm=this.cylinder(.13,.15,.68,0x6baf91,group,7);arm.rotation.z=Math.PI/2;arm.position.set(side*.37,.85+side*.2,0);
+            this.cylinder(.14,.15,.68,0x7dbc93,group,7).position.set(side*.64,1.1+side*.2,0);
+          }
+          this.mesh(new THREE.IcosahedronGeometry(.18),0xeea0a4,group).position.set(0,1.85,0);
+        }else{
+          for(let j=0;j<3;j++){const rock=this.cylinder(.6-j*.14,.78-j*.15,.55, [0xcf9374,0xe6b68b,0xf3cf9f][j],group,6);rock.position.y=.27+j*.51;rock.rotation.y=j*.15;}
+        }
+      }else if(t.kind==='crystal'){
+        const base=this.mesh(new THREE.DodecahedronGeometry(.73,0),0x8f83af,group);base.position.y=.18;base.scale.y=.38;
+        for(let j=0;j<3;j++){
+          const crystal=this.cylinder(0,.27,1.3+j*.28,[0xb085d7,0x8cced7,0xe3b2df][(j+v)%3],group,5);
+          crystal.position.set((j-1)*.4,.8+j*.14,j%2*.25);crystal.rotation.z=(j-1)*-.22;
+        }
+      }else{
+        // Additional coral clusters distinguish the three coastal stages.
+        for(let j=0;j<v+1;j++){const coral=this.mesh(new THREE.IcosahedronGeometry(.22+j*.08,0),[0xf0b1a7,0x7dccbe,0xe5c581][(i+j)%3],group);coral.position.set(j*.32,.16+j*.09,0);coral.scale.y=1.5;}
+      }
+    });
+    // Broad terrain patches add depth without animated opacity or coplanar surfaces.
+    for(let i=0;i<6;i++){
+      const patch=this.mesh(new THREE.CircleGeometry(.7+(i%3)*.28,12),t.accent,this.scenery);
+      patch.rotation.x=-Math.PI/2;patch.position.set(i%2?-9:9,.029,-8+i*3.1);patch.scale.set(1.3,.7,1);patch.castShadow=false;
+    }
   }
   buildTower() {
     this.tower.position.copy(TOWER);this.tower.scale.setScalar(1.3);this.scene.add(this.tower);
@@ -201,7 +260,7 @@ export class World {
   }
   ring(color:number,p:THREE.Vector3) { const mesh=new THREE.Mesh(new THREE.RingGeometry(.85,1,64),new THREE.MeshBasicMaterial({color,transparent:true,opacity:.75,side:THREE.DoubleSide}));mesh.position.copy(p).y=.2;mesh.rotation.x=-Math.PI/2;this.scene.add(mesh);this.rings.push({mesh,life:.7}); }
   update(game:Game,dt:number) {
-    this.time+=dt;this.syncTowers(game.towerCount);
+    this.time+=dt;this.setStage(game.wave);this.syncTowers(game.towerCount);
     const actual=game.enemies.length?game.enemies:game.mode==='ready'?Array.from({length:7},(_,i)=>({id:-i-1,p:.012+(6-i)*ENEMY_GAP,hp:i===0?160:6,maxHp:i===0?160:6,color:i%5,speed:0,hit:0,boss:i===0})):[];
     const active=new Set(actual.map(e=>e.id));
     for(const [id,g]of this.enemies)if(!active.has(id)){this.removeGroup(g);this.enemies.delete(id);}

@@ -38,3 +38,29 @@ test('complete 15-level campaign using only earned money and legal inputs',()=>{
  console.log('Campaign:',JSON.stringify({seconds:Math.round(count/60),kills:g.kills,levels:g.levels,coins:g.coins,stages:results}));
 });
 test('without upgrades, escalating campaign eventually defeats the initial turret',()=>{const g=new Game();g.start();for(let t=0;t<60*1800&&!['won','lost'].includes(g.mode);t++){if(g.mode==='intermission')g.nextLevel();g.tick(1/60);g.events=[];}assert.equal(g.mode,'lost');assert.ok(g.wave<15);});
+
+test('direct level selection starts a clean, correctly equipped game',()=>{
+ for(const n of [1,4,7,10,13,15]){
+  const g=new Game(n);assert.equal(g.wave,n);assert.equal(g.hp,3);assert.equal(g.kills,0);
+  assert.equal(g.enemies.length,0);assert.equal(g.mode,'ready');
+  assert.ok(g.towerCount>=1&&g.towerCount<=5);assert.equal(g.towerTimers.length,g.towerCount);
+  g.start();assert.equal(g.enemies[0].maxHp,LEVELS[n-1].headHp);
+  advance(g,.2);assert.deepEqual(new Set(g.shots.map(s=>s.source)),new Set(Array.from({length:g.towerCount},(_,i)=>i)));
+ }
+ for(const n of [0,16,1.5,NaN])assert.throws(()=>new Game(n),RangeError);
+});
+test('every selected stage can be cleared with its equipment and earned money',()=>{
+ for(let n=1;n<=15;n++){
+  const g=new Game(n);g.start();
+  for(let t=0;t<60*240&&g.mode==='playing';t++){
+   if(g.hp<3&&g.canBuy('shield'))g.buy('shield');
+   if(g.towerCount<Math.min(5,2+Math.floor(g.wave/3))&&g.canBuild())g.buildTower();
+   if(g.levels.power<=g.levels.haste+1&&g.canBuy('power'))g.buy('power');
+   else if(g.levels.haste<8&&g.canBuy('haste'))g.buy('haste');
+   else if(g.levels.chain<3&&g.canBuy('chain'))g.buy('chain');
+   if(g.enemies.filter(e=>!e.boss).length>=4)g.burst();
+   g.tick(1/60);g.events=[];
+  }
+  assert.ok(g.mode==='intermission'||g.mode==='won',`Selected level ${n}: ${JSON.stringify(g.snapshot())}`);
+ }
+});

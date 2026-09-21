@@ -13,6 +13,12 @@ export const LEVELS = names.map((name, i) => ({
   speed: .0105 + i * .00048,
   reward: 2 + Math.floor(i / 3), bonus: 12 + i * 5,
 }));
+// Direct entry uses a fixed equipment kit; sequential play preserves earned upgrades.
+export function startingKit(level: number) {
+  const i = level - 1;
+  return { towers: Math.min(5, 1 + Math.ceil(i / 3)), power: Math.ceil(i * .72),
+    haste: Math.min(8, Math.ceil(i * .6)), chain: Math.min(3, Math.floor(i / 4)), coins: 24 + i * 12 };
+}
 export interface Enemy { id: number; p: number; hp: number; maxHp: number; color: number; speed: number; hit: number; boss: boolean }
 export interface Shot { id: number; source: number; target: number; remaining: number; duration: number; damage: number; chain: number }
 export interface Event { type: 'shot'|'hit'|'kill'|'leak'|'wave'|'burst'|'buy'|'build'|'clear'|'win'|'lose'; id?: number; source?: number; p?: number; amount?: number; color?: number }
@@ -24,6 +30,14 @@ export class Game {
   elapsed = 0; waveTime = 0; spawned = 0; defeated = 0;
   towerTimers = [0]; spawnTimer = 0; burstCooldown = 0; targetId: number|null = null;
   nextId = 1; seed = 237; speed = 1;
+  constructor(level = 1) {
+    if (!Number.isInteger(level) || level < 1 || level > LEVELS.length) throw new RangeError('关卡范围为 1–15');
+    this.wave = level;
+    const kit = startingKit(level);
+    this.towerCount = kit.towers; this.coins = kit.coins;
+    this.levels = { power: kit.power, haste: kit.haste, chain: kit.chain };
+    this.towerTimers = Array(kit.towers).fill(0);
+  }
   get config() { return LEVELS[this.wave - 1]; }
   get waveCount() { return this.config.count; }
   get damage() { return 3 + this.levels.power * 3; }
