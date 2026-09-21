@@ -8,7 +8,7 @@ const svg=(content:string)=>`<svg viewBox="0 0 24 24" fill="none" stroke="curren
 const icons={heart:svg('<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z" fill="currentColor"/>'),coin:svg('<circle cx="12" cy="12" r="9"/><path d="M14.5 8.5h-4a2 2 0 0 0 0 4h3a2 2 0 0 1 0 4H9.5M12 6v12"/>'),power:svg('<path d="m12 2 2.2 6.1 6.5-2-3 6 4.3 4.9-6.5.2L12 23l-3.5-5.8-6.5-.2 4.3-4.9-3-6 6.5 2Z" fill="currentColor"/>'),haste:svg('<path d="m13.5 2-9 12h6L10 22l9.5-13H13l.5-7Z" fill="currentColor"/>'),chain:svg('<path d="m4 17 5-5 5 3 6-10M15 5h5v5"/><circle cx="4" cy="17" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="14" cy="15" r="2"/>'),shield:svg('<path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8 12 3 3 5-6"/>'),pause:svg('<path d="M8 5v14M16 5v14" stroke-width="4"/>'),play:svg('<path d="m8 4 12 8-12 8Z" fill="currentColor"/>'),sound:svg('<path d="m11 4-6 5H2v6h3l6 5V4ZM16 8a6 6 0 0 1 0 8M19 4a11 11 0 0 1 0 16"/>'),mute:svg('<path d="m11 4-6 5H2v6h3l6 5V4ZM16 9l6 6M22 9l-6 6"/>'),help:svg('<circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 0 1 6 0c0 2-3 2-3 4M12 17h.01"/>'),burst:svg('<circle cx="12" cy="12" r="4"/><path d="M12 1v3m0 16v3M1 12h3m16 0h3M4 4l2 2m12 12 2 2M4 20l2-2M18 6l2-2"/>'),arrow:svg('<path d="M5 12h14m-6-6 6 6-6 6"/>')};
 document.querySelector('#app')!.innerHTML=`
 <main class="game-shell">
- <header class="masthead"><a class="brand" href="#" aria-label="潮汐守卫"><span class="brand-mark">${icons.burst}</span><span>潮汐守卫<small>TIDAL GUARD</small></span></a><span class="edition">A LITTLE ISLAND. A BIG DEFENCE.</span><div class="tools"><button id="open-levels" class="tool select-tool">选关</button><button id="sound" class="tool" aria-label="开启音效" title="音效">${icons.mute}</button><button id="help" class="tool" aria-label="玩法帮助">${icons.help}</button></div></header>
+ <header class="masthead"><a class="brand" href="#" aria-label="潮汐守卫"><span class="brand-mark">${icons.burst}</span><span>潮汐守卫<small>TIDAL GUARD</small></span></a><span class="edition">A LITTLE ISLAND. A BIG DEFENCE. · v3.1</span><div class="tools"><button id="open-levels" class="tool select-tool">选关</button><button id="sound" class="tool" aria-label="开启音效" title="音效">${icons.mute}</button><button id="help" class="tool" aria-label="玩法帮助">${icons.help}</button></div></header>
  <section class="hud" aria-label="战斗状态"><div class="health stat">${icons.heart}<span id="hearts">3</span><span id="shield-count"></span></div><button id="levels" class="wave-stat" aria-label="选择关卡"><div class="wave-title"><span id="level-name">初见车队</span><strong>关卡 <b id="wave">01</b><i> / 15</i></strong></div><div class="progress"><span id="progress"></span></div></button><div class="money stat">${icons.coin}<span id="coins">24</span></div><button id="pause" class="tool pause" aria-label="暂停游戏">${icons.pause}</button></section>
  <div id="world"></div><div class="paper-grain" aria-hidden="true"></div>
  <div class="island-caption"><span id="scene-title">01 — 阳光海岸</span><i id="scene-weather">暖风 · 贝壳与椰林</i></div>
@@ -42,13 +42,13 @@ function syncUI(){
  $('level-name').textContent=game.config.name;
  const theme=stageTheme(game.wave);
  $('scene-title').textContent=`${String(game.wave).padStart(2,'0')} — ${theme.label}`;
- $('scene-weather').textContent=theme.weather;
+ $('scene-weather').textContent=`${theme.weather} · 方块基础 ${game.config.wagonHp} 血`;
  document.querySelector<HTMLElement>('.game-shell')!.style.background=theme.ground;
  document.body.style.background=theme.ground;
  $<HTMLButtonElement>('build-tower').disabled=!game.canBuild();$('build-price').textContent=game.towerCount===game.maxTowers?'已建满':`${game.buildCost} 金币`;
  $('tower-count').textContent=`${game.towerCount} / ${game.maxTowers}`;
  $('level-clear').hidden=game.mode!=='intermission';
- if(game.mode==='intermission'){const next=LEVELS[game.wave];$('clear-title').textContent=`第 ${game.wave} 关守住了！`;$('clear-info').textContent=`奖励 +${game.config.bonus} 金币。下一关：${next.name}，${next.heads} 个 ${next.headHp} 血车头。`;$('next-level').textContent=`进入第 ${game.wave+1} 关 →`;} 
+ if(game.mode==='intermission'){const next=LEVELS[game.wave];$('clear-title').textContent=`第 ${game.wave} 关守住了！`;$('clear-info').textContent=`奖励 +${game.config.bonus} 金币。下一关：${next.name}，${next.heads} 个 ${next.headHp} 血车头，方块基础 ${next.wagonHp} 血。`;$('next-level').textContent=`进入第 ${game.wave+1} 关 →`;}
  $('welcome').hidden=game.mode!=='ready';$('tower-level').parentElement!.classList.toggle('hidden',game.mode==='ready'||game.mode==='intermission');
  $('pause').innerHTML=game.mode==='paused'?icons.play:icons.pause;($('pause') as HTMLButtonElement).disabled=game.mode==='ready'||game.mode==='won'||game.mode==='lost'||game.mode==='intermission';
  $('pause').setAttribute('aria-label',game.mode==='paused'?'继续游戏':'暂停游戏');
@@ -65,7 +65,7 @@ function showModal(kind:string){
  modalKind=kind;$('modal').hidden=false;$('modal-secondary').hidden=kind!=='pause'&&kind!=='levels';$('modal-secondary').textContent=kind==='levels'?'返回当前游戏':'重新开始';
  const titles:Record<string,string>={pause:'海风歇一会儿。',help:'组建你的海岸炮台阵列。',levels:'挑一站，开始守岛。',won:'海岸，守住了。',lost:'再守一次夏天。'};
  $('modal-title').textContent=titles[kind];$('modal-eyebrow').textContent=({pause:'TAKE A LITTLE BREAK',help:'HOW TO PLAY',levels:'CAMPAIGN · 15 LEVELS',won:'ISLAND PROTECTED',lost:'THE TIDE WILL TURN'} as Record<string,string>)[kind];
- $('modal-body').innerHTML=kind==='levels'?levelPickerHTML():kind==='help'?`<ul class="instructions"><li><b>守住中心</b><span>高血量车头拖着方块车厢靠近，漏过敌人会扣生命。</span></li><li><b>强化炮塔</b><span>用金币增建炮台（B 键），最多 5 座。伤害、射速和弹射升级对全部炮台生效，数字键 1–4 购买升级。</span></li><li><b>主动出击</b><span>点击方块锁定目标。空格释放全场爆发，22 秒后恢复。</span></li><li><b>逐关推进</b><span>共 15 关、5 大场景，可用“选关”直接挑战，配发对应装备；顺序闯关保留装备。车队难度逐渐提高。关间可以整备，点击“进入下一关”再出发。P / Esc 暂停。</span></li></ul>`:kind==='pause'?'<p>你的炮塔和海岸都在等你。</p>':`<p>${kind==='won'?'每一颗金币，都没白花。':'把金币花在火力上，试试及时释放潮汐爆发。'}</p><div class="results"><span><b>${game.wave}<small> / 15</small></b>抵达波次</span><span><b>${game.kills}</b>击破方块</span><span><b>${game.earned}</b>获得金币</span></div>`;
+ $('modal-body').innerHTML=kind==='levels'?levelPickerHTML():kind==='help'?`<ul class="instructions"><li><b>守住中心</b><span>高血量车头拖着方块车厢靠近，漏过敌人会扣生命。</span></li><li><b>强化炮塔</b><span>用金币增建炮台（B 键），最多 5 座。伤害、射速和弹射升级对全部炮台生效，数字键 1–4 购买升级。</span></li><li><b>主动出击</b><span>点击方块锁定目标。空格释放全场爆发，22 秒后恢复。</span></li><li><b>逐关推进</b><span>共 15 关、5 大场景，可用“选关”直接挑战，配发对应装备；顺序闯关保留装备。小方块血量随关卡大幅提高，后期优先补连锁与炮台，保留金币应急修复。关间可以整备，点击“进入下一关”再出发。P / Esc 暂停。</span></li></ul>`:kind==='pause'?'<p>你的炮塔和海岸都在等你。</p>':`<p>${kind==='won'?'每一颗金币，都没白花。':'把金币花在火力上，试试及时释放潮汐爆发。'}</p><div class="results"><span><b>${game.wave}<small> / 15</small></b>抵达波次</span><span><b>${game.kills}</b>击破方块</span><span><b>${game.earned}</b>获得金币</span></div>`;
  $('modal-action').innerHTML=(kind==='pause'?'继续守岛':(kind==='help'||kind==='levels')?'知道了':kind==='won'?'再来一局':'再试一次')+icons.arrow;
  if(kind==='levels')updateSelection();
  requestAnimationFrame(()=>{if(kind==='levels'){document.querySelector<HTMLButtonElement>(`[data-level="${selectedLevel}"]`)?.focus({preventScroll:true});document.querySelector('.modal-card')!.scrollTop=0;}else $('modal-action').focus();});
@@ -76,7 +76,7 @@ function levelPickerHTML(){return `<div class="level-grid">${LEVELS.map(l=>{cons
 function updateSelection(){
  document.querySelectorAll<HTMLButtonElement>('[data-level]').forEach(b=>{const n=Number(b.dataset.level);b.setAttribute('aria-pressed',String(n===selectedLevel));b.classList.toggle('current',n===selectedLevel);});
  const l=LEVELS[selectedLevel-1],k=startingKit(selectedLevel),t=stageTheme(selectedLevel);
- $('selected-detail').innerHTML=`<strong>${t.icon} ${t.label} / ${l.name}</strong><span>${l.heads} 个车头 · 血量 ${l.headHp.toLocaleString()} · ${l.count} 节车队</span><span>配发 ${k.towers} 座炮台 · 火力 ${k.power} / 射速 ${k.haste} / 连锁 ${k.chain} · ${k.coins} 金币</span>`;
+ $('selected-detail').innerHTML=`<strong>${t.icon} ${t.label} / ${l.name}</strong><span>普通方块 ${Math.round(l.wagonHp*.85).toLocaleString()}–${Math.round(l.wagonHp*1.15).toLocaleString()} 血 · ${l.count} 节车队</span><span>${l.heads} 个车头 · 血量 ${l.headHp.toLocaleString()}</span><span>配发 ${k.towers} 座炮台 · 火力 ${k.power} / 射速 ${k.haste} / 连锁 ${k.chain} · ${k.coins} 金币</span>`;
  $('modal-action').textContent=`开始第 ${selectedLevel} 关 →`;
 }
 function openLevels(){selectedLevel=game.wave;helpResume=game.mode==='playing';if(helpResume)game.togglePause();showModal('levels');syncUI();}

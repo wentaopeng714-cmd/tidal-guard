@@ -261,7 +261,7 @@ export class World {
   ring(color:number,p:THREE.Vector3) { const mesh=new THREE.Mesh(new THREE.RingGeometry(.85,1,64),new THREE.MeshBasicMaterial({color,transparent:true,opacity:.75,side:THREE.DoubleSide}));mesh.position.copy(p).y=.2;mesh.rotation.x=-Math.PI/2;this.scene.add(mesh);this.rings.push({mesh,life:.7}); }
   update(game:Game,dt:number) {
     this.time+=dt;this.setStage(game.wave);this.syncTowers(game.towerCount);
-    const actual=game.enemies.length?game.enemies:game.mode==='ready'?Array.from({length:7},(_,i)=>({id:-i-1,p:.012+(6-i)*ENEMY_GAP,hp:i===0?160:6,maxHp:i===0?160:6,color:i%5,speed:0,hit:0,boss:i===0})):[];
+    const actual=game.enemies.length?game.enemies:game.mode==='ready'?Array.from({length:7},(_,i)=>({id:-i-1,p:.012+(6-i)*ENEMY_GAP,hp:i===0?game.config.headHp:game.config.wagonHp,maxHp:i===0?game.config.headHp:game.config.wagonHp,color:i%5,speed:0,hit:0,boss:i===0})):[];
     const active=new Set(actual.map(e=>e.id));
     for(const [id,g]of this.enemies)if(!active.has(id)){this.removeGroup(g);this.enemies.delete(id);}
     for(const e of actual) {

@@ -6,18 +6,21 @@ export const TOWER_SITES = [
   { x: 3.25, z: 1.1 }, { x: -1.4, z: 6.55 }, { x: -2.9, z: -.6 },
 ];
 const names = ['初见车队','珊瑚浅滩','椰林弯道','潮声渐近','重装先锋','双车头来袭','沙洲长队','疾风海湾','装甲列阵','重装双列','三列压境','落日追击','深潮防线','最后的海湾','潮汐终章'];
+// Fixed stage budgets account for multiple turrets and splash damage, not just one bullet.
+// Purchases never change existing or future enemies within the selected stage.
+const WAGON_HP = [8,22,55,120,260,480,800,1200,1700,2300,3000,3800,4700,5700,6800];
 export const LEVELS = names.map((name, i) => ({
   number: i + 1, name, count: 16 + i * 3, heads: 1 + Math.floor(i / 5),
   headHp: Math.round(160 * Math.pow(1.43, i)),
-  wagonHp: Math.round(6 * Math.pow(1.23, i)),
+  wagonHp: WAGON_HP[i],
   speed: .0105 + i * .00048,
   reward: 2 + Math.floor(i / 3), bonus: 12 + i * 5,
 }));
 // Direct entry uses a fixed equipment kit; sequential play preserves earned upgrades.
 export function startingKit(level: number) {
   const i = level - 1;
-  return { towers: Math.min(5, 1 + Math.ceil(i / 3)), power: Math.ceil(i * .72),
-    haste: Math.min(8, Math.ceil(i * .6)), chain: Math.min(3, Math.floor(i / 4)), coins: 24 + i * 12 };
+  return { towers: Math.min(5, 1 + Math.ceil(i / 3)), power: Math.ceil(i * .62),
+    haste: Math.min(8, Math.ceil(i * .5)), chain: Math.min(3, Math.floor(i / 5)), coins: 24 + i * 12 };
 }
 export interface Enemy { id: number; p: number; hp: number; maxHp: number; color: number; speed: number; hit: number; boss: boolean }
 export interface Shot { id: number; source: number; target: number; remaining: number; duration: number; damage: number; chain: number }

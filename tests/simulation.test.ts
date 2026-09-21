@@ -21,20 +21,21 @@ test('spawn and movement keep every train separated across all 15 levels',()=>{
 test('leaks consume a shield first; losing clears manual target',()=>{const g=new Game();g.start();g.enemies=g.enemies.slice(0,4);g.towerTimers=[Infinity];g.shield=1;for(let i=0;i<4;i++){const e=g.enemies[0];g.targetId=e.id;e.p=.999999;g.tick(.1);}assert.equal(g.mode,'lost');assert.equal(g.hp,0);assert.equal(g.shield,0);assert.equal(g.targetId,null);});
 test('level clear waits for the player and preserves towers and upgrades',()=>{const g=new Game();g.start();g.buildTower();g.coins=100;g.buy('power');g.enemies=[];g.spawned=g.waveCount;g.tick(.01);assert.equal(g.mode,'intermission');const elapsed=g.elapsed;advance(g,20);assert.equal(g.wave,1);assert.equal(g.elapsed,elapsed);assert.ok(g.buy('haste'));assert.ok(g.nextLevel());assert.equal(g.wave,2);assert.equal(g.towerCount,2);assert.equal(g.levels.power,1);assert.equal(g.levels.haste,1);assert.equal(g.enemies[0].maxHp,LEVELS[1].headHp);assert.equal(g.nextLevel(),false);});
 test('complete 15-level campaign using only earned money and legal inputs',()=>{
- const g=new Game();g.start();g.buildTower();let count=0,lastLevel=1;const results=[];
+ const g=new Game();g.start();g.buildTower();let count=0,leaks=0;const results=[];
  for(;count<60*3600&&!['won','lost'].includes(g.mode);count++){
   if(g.canShop){
    if(g.hp<3&&g.canBuy('shield'))g.buy('shield');
    if(g.towerCount<Math.min(5,2+Math.floor(g.wave/3))&&g.canBuild())g.buildTower();
-   if(g.levels.power<=g.levels.haste+1&&g.canBuy('power'))g.buy('power');
+   if(g.wave>=7&&g.levels.chain<4&&g.canBuy('chain'))g.buy('chain');
+   else if(g.levels.power<=g.levels.haste+1&&g.canBuy('power'))g.buy('power');
    else if(g.canBuy('haste')&&g.levels.haste<8)g.buy('haste');
    else if(g.levels.chain<3&&g.canBuy('chain'))g.buy('chain');
    if(g.mode==='intermission'){results.push({level:g.wave,seconds:Math.round(g.waveTime),towers:g.towerCount,hp:g.hp});g.nextLevel();}
   }
   if(g.enemies.filter(e=>!e.boss).length>=4)g.burst();
-  g.tick(1/60);g.events=[];
+  g.tick(1/60);leaks+=g.events.filter(e=>e.type==='leak').length;g.events=[];
  }
- assert.equal(g.mode,'won',JSON.stringify(g.snapshot()));assert.equal(g.wave,15);assert.equal(g.kills,LEVELS.reduce((n,l)=>n+l.count,0));assert.equal(g.towerCount,5);
+ assert.equal(g.mode,'won',JSON.stringify(g.snapshot()));assert.equal(g.wave,15);assert.equal(g.kills+leaks,LEVELS.reduce((n,l)=>n+l.count,0));assert.ok(leaks<=8);assert.equal(g.towerCount,5);
  console.log('Campaign:',JSON.stringify({seconds:Math.round(count/60),kills:g.kills,levels:g.levels,coins:g.coins,stages:results}));
 });
 test('without upgrades, escalating campaign eventually defeats the initial turret',()=>{const g=new Game();g.start();for(let t=0;t<60*1800&&!['won','lost'].includes(g.mode);t++){if(g.mode==='intermission')g.nextLevel();g.tick(1/60);g.events=[];}assert.equal(g.mode,'lost');assert.ok(g.wave<15);});
@@ -55,12 +56,49 @@ test('every selected stage can be cleared with its equipment and earned money',(
   for(let t=0;t<60*240&&g.mode==='playing';t++){
    if(g.hp<3&&g.canBuy('shield'))g.buy('shield');
    if(g.towerCount<Math.min(5,2+Math.floor(g.wave/3))&&g.canBuild())g.buildTower();
-   if(g.levels.power<=g.levels.haste+1&&g.canBuy('power'))g.buy('power');
+   if(g.wave>=7&&g.levels.chain<4&&g.canBuy('chain'))g.buy('chain');
+   else if(g.levels.power<=g.levels.haste+1&&g.canBuy('power'))g.buy('power');
    else if(g.levels.haste<8&&g.canBuy('haste'))g.buy('haste');
    else if(g.levels.chain<3&&g.canBuy('chain'))g.buy('chain');
    if(g.enemies.filter(e=>!e.boss).length>=4)g.burst();
    g.tick(1/60);g.events=[];
   }
   assert.ok(g.mode==='intermission'||g.mode==='won',`Selected level ${n}: ${JSON.stringify(g.snapshot())}`);
+ }
+});
+
+
+test('late wagons survive an upgraded volley and HP does not rubber-band with purchases',()=>{
+ for(const n of [5,10,15]){
+  const g=new Game(n);g.start();const wagon=g.enemies.find(e=>!e.boss)!;
+  assert.ok(wagon.hp>g.damage*5,`Level ${n} should require sustained fire`);
+  const before=wagon.hp;g.hit(wagon,g.damage);assert.equal(wagon.hp,before-g.damage);
+  const hp=wagon.hp,max=wagon.maxHp;g.coins=10000;g.buy('power');g.buy('haste');g.buildTower();
+  assert.equal(wagon.hp,hp);assert.equal(wagon.maxHp,max);
+ }
+});
+test('late stages defeat unattended starting equipment across different wagon rolls',()=>{
+ for(const seed of [1,237,9001])for(const n of [10,13,15]){
+  const g=new Game(n);g.seed=seed;g.start();advance(g,240);
+  assert.equal(g.mode,'lost',`Level ${n}, seed ${seed} must not be an idle win`);
+ }
+});
+test('all 15 selected stages remain winnable with deliberate upgrades and human-paced inputs',()=>{
+ for(const seed of [1,237,9001])for(let n=1;n<=15;n++){
+  const g=new Game(n);g.seed=seed;g.start();
+  for(let tick=0;tick<240*60&&g.mode==='playing';tick++){
+   if(tick%30===0){
+    // At most one shop action every half second, including emergency repairs.
+    if(g.hp<3&&g.canBuy('shield'))g.buy('shield');
+    else if(g.towerCount<Math.min(5,2+Math.floor(n/3))&&g.canBuild())g.buildTower();
+    else if(n>=7&&g.levels.chain<4&&g.canBuy('chain'))g.buy('chain');
+    else if(g.levels.power<=g.levels.haste+1&&g.canBuy('power'))g.buy('power');
+    else if(g.levels.haste<8&&g.canBuy('haste'))g.buy('haste');
+    else if(g.levels.chain<3&&g.canBuy('chain'))g.buy('chain');
+    if(g.enemies.filter(e=>!e.boss).length>=4)g.burst();
+   }
+   g.tick(1/60);g.events=[];
+  }
+  assert.ok(['intermission','won'].includes(g.mode),`Level ${n}, seed ${seed}: ${g.mode}`);
  }
 });
